@@ -1,8 +1,8 @@
 # app.py
 # pamiętaj aby w terminalu odpalić: /Users/macbookpro/Documents/skrypty/python3 app.py
 
-
-from flask import Flask, render_template, request
+# app.py
+from flask import Flask, render_template, request, redirect, url_for, session
 import torch
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 import numpy as np
@@ -11,16 +11,20 @@ from docx import Document
 import os
 from werkzeug.utils import secure_filename
 
+# Konfiguracja logowania
+USERNAME = "admin"
+PASSWORD = "tajnehaslo123"
+SECRET_KEY = "supersekretnyklucz"
+
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.secret_key = SECRET_KEY
 
-# Model i tokenizer GPT2
-#model_name = "gpt2"
+# Model i tokenizer (lekki model dla Render)
 model_name = "distilgpt2"
-
 tokenizer = GPT2Tokenizer.from_pretrained(model_name)
 model = GPT2LMHeadModel.from_pretrained(model_name)
 model.eval()
@@ -54,8 +58,26 @@ def calculate_burstiness(text):
     sentence_lengths = [len(sentence.split()) for sentence in sentences]
     return np.std(sentence_lengths) if len(sentence_lengths) >= 2 else 0.0
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        if request.form.get('username') == USERNAME and request.form.get('password') == PASSWORD:
+            session['logged_in'] = True
+            return redirect(url_for('index'))
+        else:
+            return render_template('login.html', error='Błędny login lub hasło')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+
     wynik = None
     perplexity = None
     burstiness = None
@@ -80,22 +102,19 @@ def index():
         if text:
             perplexity = calculate_perplexity(text, model, tokenizer)
             burstiness = calculate_burstiness(text)
+
             if perplexity < 60:
                 wynik = "Tekst wygląda na wygenerowany przez AI."
                 kolor = "red"
             elif 60 <= perplexity <= 100:
-                wynik = "Tekst znajduje się na pograniczu – może być wygenerowany przez AI lub napisany przez człowieka."
+                wynik = "Tekst znajduje się na pograniczu AI / człowiek."
                 kolor = "orange"
             else:
-                wynik = "Tekst wygląda na napisany przez człowieka. Cieszymy się ;-)"
+                wynik = "Tekst wygląda na napisany przez człowieka."
                 kolor = "green"
 
     return render_template('index.html', wynik=wynik, kolor=kolor, perplexity=perplexity, burstiness=burstiness, text=text)
 
-import os
-
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
-
-
