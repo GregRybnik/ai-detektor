@@ -2,97 +2,104 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Analiza tekstu – AI czy człowiek?</title>
+    <title>Detektor AI – Analiza Tekstu</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 40px auto;
-            max-width: 800px;
-            background-color: #f7f7f7;
-            padding: 20px;
-            border-radius: 10px;
+            background-color: white;
+            color: black;
+            transition: all 0.3s ease;
         }
-        h2 {
-            color: #333;
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         textarea {
             width: 100%;
+            height: 150px;
             padding: 10px;
-            font-size: 1em;
-            border: 1px solid #ccc;
-            border-radius: 6px;
+            margin-bottom: 1rem;
+            border-radius: 8px;
         }
         input[type="file"] {
-            margin-top: 10px;
+            margin-bottom: 1rem;
         }
-        button {
-            margin-top: 15px;
-            background-color: #007bff;
-            color: white;
-            padding: 10px 20px;
-            font-size: 1em;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
+        .dark-mode {
+            background-color: #121212;
+            color: #f1f1f1;
         }
-        button:hover {
-            background-color: #0056b3;
+        .dark-mode textarea,
+        .dark-mode input[type="file"] {
+            background-color: #1e1e1e;
+            color: #fff;
+            border: 1px solid #444;
         }
-        .reset-button {
-            background-color: #6c757d;
-            margin-left: 10px;
-        }
-        .reset-button:hover {
-            background-color: #5a6268;
-        }
-        .wynik {
-            margin-top: 30px;
-            padding: 15px;
-            border-radius: 6px;
-            font-size: 1.2em;
+        .result {
             font-weight: bold;
-        }
-        .green {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .red {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .stats {
-            margin-top: 10px;
-            font-size: 0.95em;
-            color: #555;
+            margin-top: 1rem;
         }
         footer {
-            margin-top: 50px;
             text-align: center;
-            color: #888;
+            margin-top: 2rem;
             font-size: 0.9em;
+        }
+        #toggle-theme {
+            float: right;
+            background: none;
+            border: none;
+            font-size: 1.2em;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <h2>Wklej tekst lub prześlij plik DOCX do analizy</h2>
-    <form method="post" enctype="multipart/form-data">
-        <textarea name="text" rows="10" placeholder="Wklej tutaj swój tekst...">{{ text }}</textarea><br><br>
-        <label>Lub wybierz plik DOCX:</label>
-        <input type="file" name="file"><br><br>
-        <button type="submit">Analizuj</button>
-        <button type="submit" name="clear" value="1" class="reset-button">Zeruj wyniki</button>
-    </form>
+    <div class="container">
+        <form method="POST" enctype="multipart/form-data">
+            <button id="toggle-theme">🌙</button>
+            <h2>Detektor AI – analiza tekstu</h2>
 
-    {% if wynik %}
-        <div class="wynik {{ kolor }}">{{ wynik }}</div>
-        <div class="stats">
-            <p><strong>Perplexity:</strong> {{ perplexity }}</p>
-            <p><strong>Burstiness:</strong> {{ burstiness }}</p>
-        </div>
-    {% endif %}
+            <label for="text">Wklej tekst lub prześlij plik DOCX</label>
+            <textarea name="text" placeholder="Wklej tutaj tekst...">{{ text }}</textarea>
 
-    <footer>
-        © 2025, Copyright (c), GB
-    </footer>
+            <p>Lub wybierz plik DOCX:</p>
+            <input type="file" name="file" accept="application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+
+            <div>
+                <button type="submit">Analizuj</button>
+                <button type="submit" name="clear" value="1">Zeruj wyniki</button>
+                <a href="/logout" style="float:right">Wyloguj</a>
+            </div>
+
+            {% if wynik %}
+                <p class="result" style="color: {{ kolor }}">Wynik analizy: {{ wynik }}</p>
+                <p>Perplexity: {{ perplexity }}</p>
+                <p>Burstiness: {{ burstiness }}</p>
+            {% endif %}
+        </form>
+
+        <footer>
+            2025, Copyright(c), GB
+        </footer>
+    </div>
+
+    <script>
+        const userPrefersDark = localStorage.getItem("theme") === "dark";
+        if (userPrefersDark) {
+            document.body.classList.add("dark-mode");
+            document.getElementById("toggle-theme").innerText = "☀️";
+        }
+
+        document.getElementById("toggle-theme").addEventListener("click", function(e) {
+            e.preventDefault();
+            document.body.classList.toggle("dark-mode");
+            const isDark = document.body.classList.contains("dark-mode");
+            localStorage.setItem("theme", isDark ? "dark" : "light");
+            this.innerText = isDark ? "☀️" : "🌙";
+        });
+    </script>
 </body>
 </html>
