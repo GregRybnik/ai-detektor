@@ -2,4 +2,3 @@ flask
 transformers
 torch
 python-docx
-EOF
