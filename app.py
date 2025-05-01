@@ -3,6 +3,8 @@
 
 # app.py
 from flask import Flask, render_template, request, redirect, url_for, session
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_sqlalchemy import SQLAlchemy
 import torch
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 import numpy as np
@@ -11,25 +13,32 @@ from docx import Document
 import os
 from werkzeug.utils import secure_filename
 
-# Konfiguracja logowania
-USERNAME = "admin"
-PASSWORD = "tajnehaslo123"
-SECRET_KEY = "supersekretnyklucz"
-
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__)
+app.secret_key = "supersekretnyklucz"
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.secret_key = SECRET_KEY
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 
-# Model i tokenizer (lekki model dla Render)
+db = SQLAlchemy(app)
+
+# Model użytkownika
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(150), nullable=False)
+
+# Inicjalizacja bazy danych
+with app.app_context():
+    db.create_all()
+
+# Model i tokenizer
 model_name = "distilgpt2"
 tokenizer = GPT2Tokenizer.from_pretrained(model_name)
 model = GPT2LMHeadModel.from_pretrained(model_name)
 model.eval()
 
-# Proste dzielenie na zdania
 def simple_sent_tokenize(text):
     return [s for s in re.split(r'(?<=[.!?])\s+', text.strip()) if s]
 
@@ -39,7 +48,6 @@ def calculate_perplexity(text, model, tokenizer, max_length=512):
     n_tokens = input_ids.shape[1]
     stride = max_length
     lls = []
-
     for i in range(0, n_tokens, stride):
         begin_loc = i
         end_loc = min(i + max_length, n_tokens)
@@ -49,7 +57,6 @@ def calculate_perplexity(text, model, tokenizer, max_length=512):
             outputs = model(input_ids_slice, labels=input_ids_slice)
             neg_log_likelihood = outputs.loss * trg_len
         lls.append(neg_log_likelihood)
-
     ppl = torch.exp(torch.stack(lls).sum() / n_tokens)
     return ppl.item()
 
@@ -58,14 +65,29 @@ def calculate_burstiness(text):
     sentence_lengths = [len(sentence.split()) for sentence in sentences]
     return np.std(sentence_lengths) if len(sentence_lengths) >= 2 else 0.0
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = generate_password_hash(request.form['password'])
+        if User.query.filter_by(username=username).first():
+            return "Użytkownik już istnieje."
+        new_user = User(username=username, password=password)
+        db.session.add(new_user)
+        db.session.commit()
+        return redirect(url_for('login'))
+    return render_template('register.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form.get('username') == USERNAME and request.form.get('password') == PASSWORD:
+        user = User.query.filter_by(username=request.form['username']).first()
+        if user and check_password_hash(user.password, request.form['password']):
             session['logged_in'] = True
+            session['user'] = user.username
             return redirect(url_for('index'))
         else:
-            return render_template('login.html', error='Błędny login lub hasło')
+            return render_template('login.html', error='Błędna nazwa użytkownika lub hasło')
     return render_template('login.html')
 
 @app.route('/logout')

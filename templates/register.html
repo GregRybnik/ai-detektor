@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Rejestracja użytkownika</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f1f1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .box {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            width: 300px;
+        }
+        h2 {
+            text-align: center;
+        }
+        input {
+            width: 100%;
+            padding: 0.6rem;
+            margin: 0.5rem 0;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+        button {
+            width: 100%;
+            padding: 0.6rem;
+            background: #0b74da;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        a {
+            display: block;
+            margin-top: 1rem;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>Rejestracja</h2>
+        <form method="POST">
+            <input type="text" name="username" placeholder="Nazwa użytkownika" required>
+            <input type="password" name="password" placeholder="Hasło" required>
+            <button type="submit">Zarejestruj</button>
+        </form>
+        <a href="{{ url_for('login') }}">Masz już konto? Zaloguj się</a>
+    </div>
+</body>
+</html>
