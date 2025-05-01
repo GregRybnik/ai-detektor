@@ -2,3 +2,4 @@ flask
 transformers
 torch
 python-docx
+flask_sqlalchemy
