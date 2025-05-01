@@ -67,6 +67,10 @@ def calculate_burstiness(text):
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    # tylko jeśli użytkownik jest zalogowany jako admin
+    if not session.get('logged_in') or session.get('user') != 'admin':
+        return redirect(url_for('login'))
+
     if request.method == 'POST':
         username = request.form['username']
         password = generate_password_hash(request.form['password'])
