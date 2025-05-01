@@ -29,9 +29,15 @@ class User(db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
 
-# Inicjalizacja bazy danych
+# Inicjalizacja bazy danych i tworzenie admina, jeśli nie istnieje
 with app.app_context():
     db.create_all()
+    admin = User.query.filter_by(username="admin").first()
+    if not admin:
+        admin = User(username="admin", password=generate_password_hash("1234567890AaA"))
+        db.session.add(admin)
+        db.session.commit()
+        print("✅ Konto 'admin' zostało automatycznie utworzone z domyślnym hasłem.")
 
 # Model i tokenizer
 model_name = "distilgpt2"
@@ -81,6 +87,13 @@ def register():
         db.session.commit()
         return redirect(url_for('login'))
     return render_template('register.html')
+
+@app.route('/users')
+def users():
+    if not session.get('logged_in') or session.get('user') != 'admin':
+        return redirect(url_for('login'))
+    all_users = User.query.all()
+    return render_template('users.html', users=all_users)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
