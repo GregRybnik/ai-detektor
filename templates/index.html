@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Analiza tekstu – AI czy człowiek?</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px auto;
+            max-width: 800px;
+            background-color: #f7f7f7;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        h2 {
+            color: #333;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        input[type="file"] {
+            margin-top: 10px;
+        }
+        button {
+            margin-top: 15px;
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            font-size: 1em;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .reset-button {
+            background-color: #6c757d;
+            margin-left: 10px;
+        }
+        .reset-button:hover {
+            background-color: #5a6268;
+        }
+        .wynik {
+            margin-top: 30px;
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .green {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .red {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .stats {
+            margin-top: 10px;
+            font-size: 0.95em;
+            color: #555;
+        }
+        footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #888;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h2>Wklej tekst lub prześlij plik DOCX do analizy</h2>
+    <form method="post" enctype="multipart/form-data">
+        <textarea name="text" rows="10" placeholder="Wklej tutaj swój tekst...">{{ text }}</textarea><br><br>
+        <label>Lub wybierz plik DOCX:</label>
+        <input type="file" name="file"><br><br>
+        <button type="submit">Analizuj</button>
+        <button type="submit" name="clear" value="1" class="reset-button">Zeruj wyniki</button>
+    </form>
+
+    {% if wynik %}
+        <div class="wynik {{ kolor }}">{{ wynik }}</div>
+        <div class="stats">
+            <p><strong>Perplexity:</strong> {{ perplexity }}</p>
+            <p><strong>Burstiness:</strong> {{ burstiness }}</p>
+        </div>
+    {% endif %}
+
+    <footer>
+        © 2025, Copyright (c), GB
+    </footer>
+</body>
+</html>
