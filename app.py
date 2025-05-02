@@ -25,7 +25,7 @@ class User(db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
 
-# Tworzenie konta admina – bez dekoratora
+# Tworzenie konta admina przy pierwszym uruchomieniu
 def create_admin():
     with app.app_context():
         db.create_all()
@@ -35,11 +35,19 @@ def create_admin():
             db.session.commit()
             print("✅ Konto 'admin' zostało utworzone.")
 
-# Model językowy
-model_name = "distilgpt2"
-tokenizer = GPT2Tokenizer.from_pretrained(model_name)
-model = GPT2LMHeadModel.from_pretrained(model_name)
-model.eval()
+# Wczytujemy oba modele i tokenizery
+models = {
+    "distilgpt2": {
+        "tokenizer": GPT2Tokenizer.from_pretrained("distilgpt2"),
+        "model": GPT2LMHeadModel.from_pretrained("distilgpt2")
+    },
+    "gpt2": {
+        "tokenizer": GPT2Tokenizer.from_pretrained("gpt2"),
+        "model": GPT2LMHeadModel.from_pretrained("gpt2")
+    }
+}
+for m in models.values():
+    m["model"].eval()
 
 # Tokenizacja zdań
 def simple_sent_tokenize(text):
@@ -137,10 +145,13 @@ def index():
     burstiness = None
     text = ""
     kolor = ""
+    selected_model_name = "distilgpt2"  # domyślny model
 
     if request.method == 'POST':
+        selected_model_name = request.form.get("model", "distilgpt2")
+
         if request.form.get("clear") == "1":
-            return render_template('index.html', wynik=None, kolor="", perplexity=None, burstiness=None, text="")
+            return render_template('index.html', wynik=None, kolor="", perplexity=None, burstiness=None, text="", model_name=selected_model_name)
 
         uploaded_file = request.files.get('file')
         input_text = request.form.get('text')
@@ -154,6 +165,9 @@ def index():
             text = input_text.strip()
 
         if text:
+            tokenizer = models[selected_model_name]["tokenizer"]
+            model = models[selected_model_name]["model"]
+
             perplexity = calculate_perplexity(text, model, tokenizer)
             burstiness = calculate_burstiness(text)
 
@@ -167,7 +181,9 @@ def index():
                 wynik = "Tekst wygląda na napisany przez człowieka."
                 kolor = "green"
 
-    return render_template('index.html', wynik=wynik, kolor=kolor, perplexity=perplexity, burstiness=burstiness, text=text)
+    return render_template('index.html', wynik=wynik, kolor=kolor,
+                           perplexity=perplexity, burstiness=burstiness,
+                           text=text, model_name=selected_model_name)
 
 # Uruchomienie aplikacji
 if __name__ == '__main__':
