@@ -1,0 +1,22 @@
+# Pliki Pythona
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Środowiska wirtualne
+venv/
+.env/
+.env.bak/
+
+# Dane przesłane przez użytkowników
+uploads/
+
+# Edytory i system
+.vscode/
+.DS_Store
+
+# Pliki testowe / tymczasowe
+*.log
+*.tmp
+*.bak
