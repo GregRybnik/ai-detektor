@@ -24,18 +24,19 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
+    tokens = db.Column(db.Integer, default=10)
 
-# Tworzenie konta admina przy pierwszym uruchomieniu
+# Tworzenie konta admina
 def create_admin():
     with app.app_context():
         db.create_all()
         if not User.query.filter_by(username="admin").first():
-            admin = User(username="admin", password=generate_password_hash("1234567890AaA"))
+            admin = User(username="admin", password=generate_password_hash("1234567890AaA"), tokens=9999)
             db.session.add(admin)
             db.session.commit()
             print("✅ Konto 'admin' zostało utworzone.")
 
-# Wczytujemy oba modele i tokenizery
+# Wczytanie modeli
 models = {
     "distilgpt2": {
         "tokenizer": GPT2Tokenizer.from_pretrained("distilgpt2"),
@@ -49,11 +50,10 @@ models = {
 for m in models.values():
     m["model"].eval()
 
-# Tokenizacja zdań
+# Funkcje pomocnicze
 def simple_sent_tokenize(text):
     return [s for s in re.split(r'(?<=[.!?])\s+', text.strip()) if s]
 
-# Perplexity
 def calculate_perplexity(text, model, tokenizer, max_length=512):
     encodings = tokenizer(text, return_tensors="pt", truncation=True, max_length=1024)
     input_ids = encodings.input_ids
@@ -72,13 +72,12 @@ def calculate_perplexity(text, model, tokenizer, max_length=512):
     ppl = torch.exp(torch.stack(lls).sum() / n_tokens)
     return ppl.item()
 
-# Burstiness
 def calculate_burstiness(text):
     sentences = simple_sent_tokenize(text)
     sentence_lengths = [len(sentence.split()) for sentence in sentences]
     return np.std(sentence_lengths) if len(sentence_lengths) >= 2 else 0.0
 
-# Rejestracja – tylko dla admina
+# Rejestracja
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if not session.get('logged_in') or session.get('user') != 'admin':
@@ -89,13 +88,13 @@ def register():
         password = generate_password_hash(request.form['password'])
         if User.query.filter_by(username=username).first():
             return "Użytkownik już istnieje."
-        new_user = User(username=username, password=password)
+        new_user = User(username=username, password=password, tokens=10)
         db.session.add(new_user)
         db.session.commit()
         return redirect(url_for('users'))
     return render_template('register.html')
 
-# Lista użytkowników – tylko dla admina
+# Lista użytkowników
 @app.route('/users')
 def users():
     if not session.get('logged_in') or session.get('user') != 'admin':
@@ -103,7 +102,23 @@ def users():
     all_users = User.query.all()
     return render_template('users.html', users=all_users)
 
-# Usuwanie użytkownika – tylko dla admina
+# Zmiana liczby tokenów
+@app.route('/update_tokens/<int:user_id>', methods=['POST'])
+def update_tokens(user_id):
+    if not session.get('logged_in') or session.get('user') != 'admin':
+        return redirect(url_for('login'))
+
+    user = User.query.get(user_id)
+    if user and user.username != 'admin':
+        try:
+            new_token_count = int(request.form['tokens'])
+            user.tokens = new_token_count
+            db.session.commit()
+        except ValueError:
+            pass
+    return redirect(url_for('users'))
+
+# Usuwanie użytkownika
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
     if not session.get('logged_in') or session.get('user') != 'admin':
@@ -134,24 +149,34 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-# Strona główna – analiza tekstu
+# Strona główna – analiza
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
 
+    current_user = User.query.filter_by(username=session.get('user')).first()
     wynik = None
     perplexity = None
     burstiness = None
     text = ""
     kolor = ""
-    selected_model_name = "distilgpt2"  # domyślny model
+    selected_model_name = "distilgpt2"
 
     if request.method == 'POST':
         selected_model_name = request.form.get("model", "distilgpt2")
 
         if request.form.get("clear") == "1":
-            return render_template('index.html', wynik=None, kolor="", perplexity=None, burstiness=None, text="", model_name=selected_model_name)
+            return render_template('index.html', wynik=None, kolor="", perplexity=None,
+                                   burstiness=None, text="", model_name=selected_model_name,
+                                   tokens=current_user.tokens)
+
+        if current_user.tokens <= 0:
+            wynik = "Brak tokenów – nie możesz już analizować tekstów."
+            kolor = "gray"
+            return render_template('index.html', wynik=wynik, kolor=kolor,
+                                   perplexity=None, burstiness=None, text="",
+                                   model_name=selected_model_name, tokens=current_user.tokens)
 
         uploaded_file = request.files.get('file')
         input_text = request.form.get('text')
@@ -181,9 +206,13 @@ def index():
                 wynik = "Tekst wygląda na napisany przez człowieka."
                 kolor = "green"
 
+            current_user.tokens -= 1
+            db.session.commit()
+
     return render_template('index.html', wynik=wynik, kolor=kolor,
                            perplexity=perplexity, burstiness=burstiness,
-                           text=text, model_name=selected_model_name)
+                           text=text, model_name=selected_model_name,
+                           tokens=current_user.tokens)
 
 # Uruchomienie aplikacji
 if __name__ == '__main__':
