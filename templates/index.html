@@ -11,7 +11,9 @@
             color: black;
             margin: 0;
             padding: 1rem;
+            transition: background-color 0.3s, color 0.3s;
         }
+
         .container {
             max-width: 800px;
             margin: 0 auto;
@@ -20,12 +22,24 @@
             border-radius: 12px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
+
+        .dark-mode {
+            background-color: #121212;
+            color: #f1f1f1;
+        }
+
+        .dark-mode .container {
+            background-color: #1f1f1f;
+            color: #f1f1f1;
+        }
+
         h1.title {
             text-align: center;
             font-size: 1.8em;
             font-weight: bold;
             margin-bottom: 1.5rem;
         }
+
         textarea, select, input[type="file"] {
             width: 100%;
             padding: 10px;
@@ -34,11 +48,13 @@
             font-size: 1em;
             box-sizing: border-box;
         }
+
         label {
             font-weight: bold;
             display: block;
             margin-bottom: 0.5rem;
         }
+
         button {
             padding: 0.75rem 1.2rem;
             border: none;
@@ -49,33 +65,48 @@
             font-size: 1em;
             margin-right: 0.5rem;
         }
-        a.logout {
-            float: right;
-            font-size: 0.95em;
-            margin-top: 0.5rem;
+
+        .dark-mode button {
+            background-color: #333;
+            color: white;
         }
+
         .result {
             font-weight: bold;
             margin-top: 1rem;
         }
+
         footer {
             text-align: center;
             margin-top: 2rem;
             font-size: 0.9em;
         }
 
+        a.logout {
+            float: right;
+            font-size: 0.95em;
+            margin-top: 0.5rem;
+        }
+
+        #toggle-theme {
+            float: right;
+            background: none;
+            border: none;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 1rem;
-            }
-            button, textarea, select, input[type="file"] {
-                font-size: 1em;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <button id="toggle-theme">🌙</button>
         <h1 class="title">AI Detector<br>System analizy tekstu</h1>
 
         <form method="POST" enctype="multipart/form-data">
@@ -87,7 +118,6 @@
             <label for="file">Lub wybierz plik Word (.docx):</label>
             <input type="file" name="file" accept=".docx">
 
-            <!-- Przeniesiony opis modelu pod plik -->
             <label for="model">Wybierz model analizy:</label>
             <select name="model" id="model">
                 <option value="distilgpt2" {% if model_name == "distilgpt2" %}selected{% endif %}>distilgpt2 – szybszy, mniej dokładny</option>
@@ -111,5 +141,20 @@
             2025, Copyright(c), GB
         </footer>
     </div>
+
+    <script>
+        const userPrefersDark = localStorage.getItem("theme") === "dark";
+        if (userPrefersDark) {
+            document.body.classList.add("dark-mode");
+            document.getElementById("toggle-theme").innerText = "☀️";
+        }
+
+        document.getElementById("toggle-theme").addEventListener("click", function () {
+            document.body.classList.toggle("dark-mode");
+            const isDark = document.body.classList.contains("dark-mode");
+            localStorage.setItem("theme", isDark ? "dark" : "light");
+            this.innerText = isDark ? "☀️" : "🌙";
+        });
+    </script>
 </body>
 </html>
