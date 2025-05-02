@@ -1,5 +1,3 @@
-# app.py
-# pamiętaj aby w terminalu odpalić: /Users/macbookpro/Documents/skrypty/python3 app.py
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
@@ -27,15 +25,15 @@ class User(db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
 
-# Tworzenie konta admina przy pierwszym uruchomieniu
-@app.before_first_request
+# Tworzenie konta admina – bez dekoratora
 def create_admin():
-    db.create_all()
-    if not User.query.filter_by(username="admin").first():
-        admin = User(username="admin", password=generate_password_hash("1234567890AaA"))
-        db.session.add(admin)
-        db.session.commit()
-        print("✅ Konto 'admin' zostało utworzone.")
+    with app.app_context():
+        db.create_all()
+        if not User.query.filter_by(username="admin").first():
+            admin = User(username="admin", password=generate_password_hash("1234567890AaA"))
+            db.session.add(admin)
+            db.session.commit()
+            print("✅ Konto 'admin' zostało utworzone.")
 
 # Model językowy
 model_name = "distilgpt2"
@@ -173,5 +171,6 @@ def index():
 
 # Uruchomienie aplikacji
 if __name__ == '__main__':
+    create_admin()
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
