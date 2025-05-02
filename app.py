@@ -1,7 +1,5 @@
 # app.py
 # pamiętaj aby w terminalu odpalić: /Users/macbookpro/Documents/skrypty/python3 app.py
-
-# app.py
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
@@ -29,25 +27,27 @@ class User(db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(150), nullable=False)
 
-# Inicjalizacja bazy danych i tworzenie admina, jeśli nie istnieje
-with app.app_context():
+# Tworzenie konta admina przy pierwszym uruchomieniu
+@app.before_first_request
+def create_admin():
     db.create_all()
-    admin = User.query.filter_by(username="admin").first()
-    if not admin:
+    if not User.query.filter_by(username="admin").first():
         admin = User(username="admin", password=generate_password_hash("1234567890AaA"))
         db.session.add(admin)
         db.session.commit()
-        print("✅ Konto 'admin' zostało automatycznie utworzone z domyślnym hasłem.")
+        print("✅ Konto 'admin' zostało utworzone.")
 
-# Model i tokenizer
+# Model językowy
 model_name = "distilgpt2"
 tokenizer = GPT2Tokenizer.from_pretrained(model_name)
 model = GPT2LMHeadModel.from_pretrained(model_name)
 model.eval()
 
+# Tokenizacja zdań
 def simple_sent_tokenize(text):
     return [s for s in re.split(r'(?<=[.!?])\s+', text.strip()) if s]
 
+# Perplexity
 def calculate_perplexity(text, model, tokenizer, max_length=512):
     encodings = tokenizer(text, return_tensors="pt", truncation=True, max_length=1024)
     input_ids = encodings.input_ids
@@ -66,14 +66,15 @@ def calculate_perplexity(text, model, tokenizer, max_length=512):
     ppl = torch.exp(torch.stack(lls).sum() / n_tokens)
     return ppl.item()
 
+# Burstiness
 def calculate_burstiness(text):
     sentences = simple_sent_tokenize(text)
     sentence_lengths = [len(sentence.split()) for sentence in sentences]
     return np.std(sentence_lengths) if len(sentence_lengths) >= 2 else 0.0
 
+# Rejestracja – tylko dla admina
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    # tylko jeśli użytkownik jest zalogowany jako admin
     if not session.get('logged_in') or session.get('user') != 'admin':
         return redirect(url_for('login'))
 
@@ -85,9 +86,10 @@ def register():
         new_user = User(username=username, password=password)
         db.session.add(new_user)
         db.session.commit()
-        return redirect(url_for('login'))
+        return redirect(url_for('users'))
     return render_template('register.html')
 
+# Lista użytkowników – tylko dla admina
 @app.route('/users')
 def users():
     if not session.get('logged_in') or session.get('user') != 'admin':
@@ -95,6 +97,19 @@ def users():
     all_users = User.query.all()
     return render_template('users.html', users=all_users)
 
+# Usuwanie użytkownika – tylko dla admina
+@app.route('/delete_user/<int:user_id>', methods=['POST'])
+def delete_user(user_id):
+    if not session.get('logged_in') or session.get('user') != 'admin':
+        return redirect(url_for('login'))
+
+    user = User.query.get(user_id)
+    if user and user.username != 'admin':
+        db.session.delete(user)
+        db.session.commit()
+    return redirect(url_for('users'))
+
+# Logowanie
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -107,11 +122,13 @@ def login():
             return render_template('login.html', error='Błędna nazwa użytkownika lub hasło')
     return render_template('login.html')
 
+# Wylogowanie
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('login'))
 
+# Strona główna – analiza tekstu
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if not session.get('logged_in'):
@@ -154,6 +171,7 @@ def index():
 
     return render_template('index.html', wynik=wynik, kolor=kolor, perplexity=perplexity, burstiness=burstiness, text=text)
 
+# Uruchomienie aplikacji
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
