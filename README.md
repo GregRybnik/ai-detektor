@@ -1,1 +1,1 @@
-System do rozpoznawania tekstów. Sprawdza czy tekst powstał przy pomocy modeli LLM.
+System do rozpoznawania twarzy za pomocą LLM.
